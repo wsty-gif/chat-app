@@ -1,4 +1,10 @@
-﻿<style>
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI チャット LINE風</title>
+<style>
   * { margin:0; padding:0; box-sizing:border-box; }
 
   body {
@@ -83,7 +89,6 @@
     cursor:not-allowed;
   }
 
-  /* スマホ幅調整 */
   @media (max-width:600px){
     .message {
       max-width:85%;
@@ -104,3 +109,80 @@
     }
   }
 </style>
+</head>
+<body>
+
+<header>AI チャット（LINE風）</header>
+
+<div id="chat"></div>
+
+<div id="input-area">
+  <textarea id="input" rows="1" placeholder="メッセージを入力"></textarea>
+  <button id="send">送信</button>
+</div>
+
+<script>
+const API_KEY = "AIzaSyAGJBEf57Wb3L_PemkLC7kk0YsD5oKGK3c"; // ブラウザキー
+const MODEL = "gemini-1.5-flash";
+
+const chatBox = document.getElementById("chat");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+
+function addMessage(text, sender){
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender);
+  msg.textContent = text;
+  chatBox.appendChild(msg);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+async function sendMessage(){
+  const userMessage = input.value.trim();
+  if(!userMessage) return;
+  addMessage(userMessage, "user");
+  input.value = "";
+
+  addMessage("…", "bot");
+  const thinkingEl = chatBox.lastElementChild;
+
+  sendBtn.disabled = true;
+
+  try{
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ contents:[{ role:"user", parts:[{ text:userMessage }] }] })
+    });
+    const data = await res.json();
+    const reply = data.candidates?.[0]?.content?.[0]?.text || "（返答なし）";
+    thinkingEl.textContent = reply;
+  }catch(e){
+    thinkingEl.textContent = "⚠️ エラーが発生しました";
+    console.error(e);
+  }finally{
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+sendBtn.addEventListener("click", sendMessage);
+input.addEventListener("keydown", e=>{
+  if(e.key==="Enter"&&!e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// 自動リサイズ
+input.addEventListener("input", ()=>{
+  input.style.height="auto";
+  input.style.height=Math.min(input.scrollHeight,220)+"px";
+});
+
+// 初期メッセージ
+addMessage("こんにちは！ご用件を教えてください。","bot");
+</script>
+
+</body>
+</html>
